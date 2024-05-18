@@ -1,5 +1,6 @@
 import os
 import time
+import datetime
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -32,7 +33,9 @@ with sd.InputStream(samplerate=fs, channels=channels, callback=callback):
 
 recording = np.concatenate(recording, axis=0)
 
-write("output.wav", fs, recording)
+current_date = str(datetime.datetime.now())
+
+write("output_" + current_date + ".wav", fs, recording)
 
 load_dotenv()
 KEY = os.environ.get("GEMINI_API_KEY")
@@ -42,7 +45,7 @@ model = genai.GenerativeModel(
     model_name="gemini-1.5-pro-latest",
 )
 
-audio_file = genai.upload_file(path="output.wav")
+audio_file = genai.upload_file(path="output_" + current_date + ".wav")
 
 while audio_file.state.name == "PROCESSING":
     print('.', end='')
