@@ -1,62 +1,46 @@
-import datetime
 import os
+import time
 
 import google.generativeai as genai
-import sounddevice as sd
 from dotenv import load_dotenv
+from gtts import gTTS
+
+import sounddevice as sd
 from scipy.io.wavfile import write
+from scipy.io.wavfile import read
+
+from playsound import playsound
 
 fs = 44100
-seconds = 20
-current_time = str(datetime.datetime.now())
+seconds = 10
 
 recording = sd.rec(int(seconds * fs), samplerate=fs, channels=1)
 sd.wait()
-write("output" + current_time + ".wav", fs, recording)
-
-with open("output" + current_time + ".wav", "rb") as audio_file:
-    audio_data = audio_file.read()
+write("output.wav", fs, recording)
 
 load_dotenv()
 KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=KEY)
 
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 64,
-    "max_output_tokens": 8192,
-    "response_mime_type": "text/plain",
-}
-
-safety_settings = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-]
-
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
-    safety_settings=safety_settings,
-    generation_config=generation_config,
+    model_name="gemini-1.5-pro-latest",
 )
 
-chat_session = model.start_chat(history=[])
+audio_file = genai.upload_file(path="output.wav")
 
-response = chat_session.send_message(audio_data)
+while audio_file.state.name == "PROCESSING":
+    print('.', end='')
+    time.sleep(10)
+    audio_file = genai.get_file(audio_file.name)
+
+if audio_file.state.name == "FAILED":
+    raise ValueError(audio_file.state.name)
+
+response = model.generate_content(
+    ["You are in conversation with an individual. Please respond to their speech, in any way they request", audio_file])
 
 print(response.text)
-print(chat_session.history)
+tts = gTTS(text=response.text, lang='en')
+tts.save("response.wav")
+
+playsound("response.wav")
