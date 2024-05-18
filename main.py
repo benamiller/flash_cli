@@ -7,15 +7,31 @@ from gtts import gTTS
 
 import sounddevice as sd
 from scipy.io.wavfile import write
-from scipy.io.wavfile import read
 
 from playsound import playsound
 
-fs = 44100
-seconds = 10
+import numpy as np
 
-recording = sd.rec(int(seconds * fs), samplerate=fs, channels=1)
-sd.wait()
+fs = 44100
+channels = 1
+recording = []
+
+
+def callback(indata, frames, time, status):
+    if status:
+        print(status)
+    recording.append(indata.copy())
+
+
+with sd.InputStream(samplerate=fs, channels=channels, callback=callback):
+    print("Recording...")
+    while True:
+        key = input("Press <space> to stop recording: ")
+        if key == ' ':
+            break
+
+recording = np.concatenate(recording, axis=0)
+
 write("output.wav", fs, recording)
 
 load_dotenv()
@@ -37,7 +53,7 @@ if audio_file.state.name == "FAILED":
     raise ValueError(audio_file.state.name)
 
 response = model.generate_content(
-    ["You are in conversation with an individual. Please respond to their speech, in any way they request", audio_file])
+    ["You are in conversation with an individual. Please respond to their speech, in any way they request, in a somewhat concise manner", audio_file])
 
 print(response.text)
 tts = gTTS(text=response.text, lang='en')
