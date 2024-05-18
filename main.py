@@ -55,9 +55,12 @@ while audio_file.state.name == "PROCESSING":
 if audio_file.state.name == "FAILED":
     raise ValueError(audio_file.state.name)
 
-response = model.generate_content(
-    ["You are in conversation with an individual. Please respond to their speech, in any way they request, in a somewhat concise manner", audio_file])
+transcription = model.generate_content(
+    ["Transcribe this text, omitting everything but the words they say, removing any 'um's and pauses, and removing any words that are consecutive duplicates", audio_file])
+response = model.generate_content(transcription.text)
 
+print(transcription)
+print(response)
 print(response.text)
 tts = gTTS(text=response.text, lang='en')
 tts.save("response.wav")
